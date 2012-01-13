@@ -44,7 +44,7 @@ xmlFeed f =
              ] ))
         -- should we expect these to be derived by the XML pretty printer..?
     { elementAttributes =   nub $
-                    ((qualName  (Nothing,Nothing) "xmlns"), (fromJust rss10NS))
+                    (qualName (Nothing,Just "xmlns") "xmlns", fromJust rss10NS) :
                     ((qualName (Nothing,Just "xmlns") (fromJust rdfPrefix)), (fromJust rdfNS)) :
                     ((qualName (Nothing,Just "xmlns") (fromJust synPrefix)), (fromJust synNS)) :
                     ((qualName (Nothing,Just "xmlns") (fromJust taxPrefix)), (fromJust taxNS)) :
