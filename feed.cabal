@@ -11,10 +11,6 @@ Extra-Source-Files: tests/Main.hs tests/rss20.xml CHANGES
 Cabal-version:   >= 1.2
 build-type: Simple
 
-flag new-base
-  description: Build with new smaller base library
-  default: False
-
 library
     Exposed-Modules: Text.RSS.Syntax
                      Text.RSS.Import
