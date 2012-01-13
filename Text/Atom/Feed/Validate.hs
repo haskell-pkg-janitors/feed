@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 --------------------------------------------------------------------
 -- |
 -- Module    : Text.Atom.Feed.Validate
@@ -12,9 +13,8 @@
 module Text.Atom.Feed.Validate where
 
 import Text.Atom.Feed.Import
-import Text.XML.Light.Types
-import Text.XML.Light.Proc
-
+import Text.XML
+import Text.Feed.Util
 
 import Data.List
 import Data.Maybe
@@ -61,12 +61,12 @@ validateEntry e =
 -- Sec 4.1.2, check #1
 checkEntryAuthor :: Element -> ValidatorResult
 checkEntryAuthor e = 
-  case pNodes "author" (elChildren e) of
+  case pNodes "author" (elementChildren e) of
     [] -> -- required 
-      case pNode "summary" (elChildren e) of
+      case pNode "summary" (elementChildren e) of
         Nothing -> demand "Required 'author' element missing (no 'summary' either)"
 	Just e1 -> 
-	  case pNode "author" (elChildren e1) of
+	  case pNode "author" (elementChildren e1) of
 	    Just a -> checkAuthor a
 	    _ -> demand "Required 'author' element missing"
     xs -> mkTree [] $ map checkAuthor xs
@@ -74,11 +74,11 @@ checkEntryAuthor e =
 
 -- Sec 4.1.2, check #2
 checkCats :: Element -> ValidatorResult
-checkCats e = mkTree [] $ map checkCat (pNodes "category" (elChildren e))
+checkCats e = mkTree [] $ map checkCat (pNodes "category" (elementChildren e))
 
 checkContents :: Element -> ValidatorResult
 checkContents e = 
-  case pNodes "content" (elChildren e) of
+  case pNodes "content" (elementChildren e) of
     []  -> valid
     [c] -> mkTree [] $ [checkContent c]
     cs  -> mkTree (flattenT (demand ("at most one 'content' element expected inside 'entry', found: " ++ show (length cs))))
@@ -90,9 +90,9 @@ checkContributor _e = valid
 
 checkContentLink :: Element -> ValidatorResult
 checkContentLink e = 
-  case pNodes "content" (elChildren e) of
+  case pNodes "content" (elementChildren e) of
     [] -> 
-      case pNodes "link" (elChildren e) of
+      case pNodes "link" (elementChildren e) of
         [] -> demand ("An 'entry' element with no 'content' element must have at least one 'link-rel' element")
 	xs -> 
 	  case filter (=="alternate") $ mapMaybe (pAttr "rel") xs of
@@ -102,7 +102,7 @@ checkContentLink e =
 
 checkLinks :: Element -> ValidatorResult
 checkLinks e = 
-  case pNodes "link" (elChildren e) of
+  case pNodes "link" (elementChildren e) of
     xs -> 
       case map fst $ filter (\ (_,n) -> n =="alternate") $ 
             mapMaybe (\ ex -> fmap (\x -> (ex,x)) $ pAttr "rel" ex) xs of
@@ -119,49 +119,49 @@ checkLinks e =
 
 checkId :: Element -> ValidatorResult
 checkId e = 
-  case pNodes "id" (elChildren e) of
+  case pNodes "id" (elementChildren e) of
     []  -> demand "required field 'id' missing from 'entry' element"
     [_] -> valid
     xs  -> demand ("only one 'id' field expected in 'entry' element, found: " ++ show (length xs))
 
 checkPublished :: Element -> ValidatorResult
 checkPublished e = 
-  case pNodes "published" (elChildren e) of
+  case pNodes "published" (elementChildren e) of
     []  -> valid
     [_] -> valid
     xs  -> demand ("expected at most one 'published' field in 'entry' element, found: " ++ show (length xs))
 
 checkRights :: Element -> ValidatorResult
 checkRights e = 
-  case pNodes "rights" (elChildren e) of
+  case pNodes "rights" (elementChildren e) of
     []  -> valid
     [_] -> valid
     xs  -> demand ("expected at most one 'rights' field in 'entry' element, found: " ++ show (length xs))
 
 checkSource :: Element -> ValidatorResult
 checkSource e = 
-  case pNodes "source" (elChildren e) of
+  case pNodes "source" (elementChildren e) of
     []  -> valid
     [_] -> valid
     xs  -> demand ("expected at most one 'source' field in 'entry' element, found: " ++ show (length xs))
 
 checkSummary :: Element -> ValidatorResult
 checkSummary e = 
-  case pNodes "summary" (elChildren e) of
+  case pNodes "summary" (elementChildren e) of
     []  -> valid
     [_] -> valid
     xs  -> demand ("expected at most one 'summary' field in 'entry' element, found: " ++ show (length xs))
 
 checkTitle :: Element -> ValidatorResult
 checkTitle e = 
-  case pNodes "title" (elChildren e) of
+  case pNodes "title" (elementChildren e) of
     []  -> demand "required field 'title' missing from 'entry' element"
     [_] -> valid
     xs  -> demand ("only one 'title' field expected in 'entry' element, found: " ++ show (length xs))
 
 checkUpdated :: Element -> ValidatorResult
 checkUpdated e = 
-  case pNodes "updated" (elChildren e) of
+  case pNodes "updated" (elementChildren e) of
     []  -> demand "required field 'updated' missing from 'entry' element"
     [_] -> valid
     xs  -> demand ("only one 'updated' field expected in 'entry' element, found: " ++ show (length xs))
@@ -191,16 +191,16 @@ checkContent :: Element -> ValidatorResult
 checkContent e = mkTree (flattenT (mkTree [] [type_valid, src_valid]))
   [case ty of
     "text" -> 
-      case onlyElems (elContent e) of
+      case onlyElems (elementNodes e) of
         [] -> valid
 	_  -> demand ("content with type 'text' cannot have child elements, text only.")
     "html" -> 
-      case onlyElems (elContent e) of
+      case onlyElems (elementNodes e) of
         [] -> valid
 	_  -> demand ("content with type 'html' cannot have child elements, text only.")
 
     "xhtml" -> 
-      case onlyElems (elContent e) of
+      case onlyElems (elementNodes e) of
         []  -> valid
 	[_] -> valid -- ToDo: check that it is a 'div'.
 	_ds -> demand ("content with type 'xhtml' should only contain one 'div' child.")
@@ -211,7 +211,7 @@ checkContent e = mkTree (flattenT (mkTree [] [type_valid, src_valid]))
 	Just mt 
 	  | isXmlType mt -> valid
           | otherwise -> 
-            case onlyElems (elContent e) of
+            case onlyElems (elementNodes e) of
               [] -> valid -- check 
 	      _  -> demand ("content with MIME type '" ++ ty ++ "' must only contain base64 data")]
 -}
@@ -254,7 +254,7 @@ checkContent e = mkTree (flattenT (mkTree [] [type_valid, src_valid]))
 
 checkTerm :: Element -> ValidatorResult
 checkTerm e = 
-  case pNodes "term" (elChildren e) of
+  case pNodes "term" (elementChildren e) of
     []  -> demand "required field 'term' missing from 'category' element"
     [_] -> valid
     xs  -> demand ("only one 'term' field expected in 'category' element, found: " ++ show (length xs))
@@ -271,14 +271,14 @@ checkPerson e =
 	    
 checkName :: Element -> ValidatorResult
 checkName e = 
-  case pNodes "name" (elChildren e) of
+  case pNodes "name" (elementChildren e) of
     []  -> demand "required field 'name' missing from 'author' element"
     [_] -> valid
     xs  -> demand ("only one 'name' expected in 'author' element, found: " ++ show (length xs))
     
 checkEmail :: Element -> ValidatorResult
 checkEmail e = 
-  case pNodes "email" (elChildren e) of
+  case pNodes "email" (elementChildren e) of
     [] -> valid
     (_:xs) 
      | null xs   -> valid
@@ -286,7 +286,7 @@ checkEmail e =
      
 checkUri :: Element -> ValidatorResult
 checkUri e = 
-  case pNodes "email" (elChildren e) of
+  case pNodes "email" (elementChildren e) of
     [] -> valid
     (_:xs) 
      | null xs   -> valid

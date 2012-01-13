@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 --------------------------------------------------------------------
 -- |
 -- Module    : Text.RSS.Export
@@ -13,33 +14,34 @@
 
 module Text.RSS.Export where
 
-import Text.XML.Light as XML
+import Text.XML as XML
+import Text.Feed.Util ()
 import Text.RSS.Syntax
 
-import Data.List
 import Data.Maybe
+import Data.Text (Text, pack)
 
-qualNode :: String -> [XML.Content] -> XML.Element
+qualNode :: Text -> [XML.Node] -> XML.Element
 qualNode n cs = 
-  blank_element 
-    { elName    = qualName n
-    , elContent = cs
+  def 
+    { elementName    = qualName n
+    , elementNodes = cs
     }
 
-qualName :: String -> QName
-qualName n = QName{qName=n,qURI=Nothing,qPrefix=Nothing}
+qualName :: Text -> Name
+qualName n = Name{nameLocalName=n,nameNamespace=Nothing,namePrefix=Nothing}
 
 ---
 xmlRSS :: RSS -> XML.Element
 xmlRSS r = 
-  (qualNode "rss" $ map Elem $
+  (qualNode "rss" $ map NodeElement $
     (  [ xmlChannel (rssChannel r) ] 
     ++ rssOther r))
-    { elAttribs = (Attr (qualName "version") (rssVersion r)):rssAttrs r }
+    { elementAttributes = ((qualName "version"), (rssVersion r)):rssAttrs r }
 
 xmlChannel :: RSSChannel -> XML.Element
 xmlChannel ch = 
-   (qualNode "channel" $ map Elem $
+   (qualNode "channel" $ map NodeElement $
      ( [ xmlLeaf "title" (rssTitle ch) 
        , xmlLeaf "link"  (rssLink ch)
        , xmlLeaf "description" (rssDescription ch)
@@ -55,7 +57,7 @@ xmlChannel ch =
       ++ mb (xmlLeaf "generator") (rssGenerator ch)
       ++ mb (xmlLeaf "docs") (rssDocs ch)
       ++ mb xmlCloud (rssCloud ch)
-      ++ mb ((xmlLeaf "ttl") . show) (rssTTL ch)
+      ++ mb ((xmlLeaf "ttl") . pack . show) (rssTTL ch)
       ++ mb xmlImage (rssImage ch)
       ++ mb (xmlLeaf "rating") (rssRating ch)
       ++ mb xmlTextInput (rssTextInput ch)
@@ -65,7 +67,7 @@ xmlChannel ch =
       
 xmlItem :: RSSItem -> XML.Element
 xmlItem it = 
-   (qualNode "item" $ map Elem $
+   (qualNode "item" $ map NodeElement $
      (  mb  (xmlLeaf "title") (rssItemTitle it) 
      ++ mb  (xmlLeaf "link")  (rssItemLink it)
      ++ mb  (xmlLeaf "description") (rssItemDescription it)
@@ -77,36 +79,36 @@ xmlItem it =
      ++ mb  (xmlLeaf "pubDate") (rssItemPubDate it)
      ++ mb  xmlSource (rssItemSource it)
      ++ rssItemOther it))
-      { elAttribs = rssItemAttrs it }
+      { elementAttributes = rssItemAttrs it }
 
 xmlSource :: RSSSource -> XML.Element
 xmlSource s = 
    (xmlLeaf "source" (rssSourceTitle s))
-     { elAttribs = (Attr (qualName "url") (rssSourceURL s)) : 
+     { elementAttributes = ((qualName "url"), (rssSourceURL s)) : 
                    rssSourceAttrs s }
 
 xmlEnclosure :: RSSEnclosure -> XML.Element
 xmlEnclosure e = 
    (xmlLeaf "enclosure" "")
-     { elAttribs =
-        (Attr (qualName "url")    (rssEnclosureURL e)) : 
-        (Attr (qualName "length") (show $ rssEnclosureLength e)) : 
-        (Attr (qualName "type")   (rssEnclosureType e)) : 
+     { elementAttributes =
+        ((qualName "url"),    (rssEnclosureURL e)) : 
+        ((qualName "length"), (pack $ show $ rssEnclosureLength e)) : 
+        ((qualName "type"),   (rssEnclosureType e)) : 
 	rssEnclosureAttrs e }
 
 xmlCategory :: RSSCategory -> XML.Element
 xmlCategory c = 
    (xmlLeaf "category" (rssCategoryValue c))
-     { elAttribs =
-        (fromMaybe id (fmap (\ n -> ((Attr (qualName "domain") n):))
+     { elementAttributes =
+        (fromMaybe id (fmap (\ n -> (((qualName "domain"), n):))
 	                    (rssCategoryDomain c))) $
 	     (rssCategoryAttrs c) }
 
 xmlGuid :: RSSGuid -> XML.Element
 xmlGuid g = 
    (xmlLeaf "guid" (rssGuidValue g))
-     { elAttribs =
-        (fromMaybe id (fmap (\ n -> ((Attr (qualName "isPermaLink") (toBool n)):))
+     { elementAttributes =
+        (fromMaybe id (fmap (\ n -> (((qualName "isPermaLink"), (toBool n)):))
 	                    (rssGuidPermanentURL g))) $
 	     (rssGuidAttrs g) }
  where
@@ -115,56 +117,56 @@ xmlGuid g =
 
 xmlImage :: RSSImage -> XML.Element
 xmlImage im = 
-   (qualNode "image" $ map Elem $
+   (qualNode "image" $ map NodeElement $
      ( [ xmlLeaf "url"   (rssImageURL im)
        , xmlLeaf "title" (rssImageTitle im)
        , xmlLeaf "link"  (rssImageLink im)
        ] 
-       ++ mb ((xmlLeaf "width")  . show) (rssImageWidth im)
-       ++ mb ((xmlLeaf "height") . show) (rssImageHeight im)
+       ++ mb ((xmlLeaf "width")  . pack . show) (rssImageWidth im)
+       ++ mb ((xmlLeaf "height") . pack . show) (rssImageHeight im)
        ++ mb (xmlLeaf "description") (rssImageDesc im)
        ++ rssImageOther im))
 
 xmlCloud :: RSSCloud -> XML.Element
 xmlCloud cl = 
     (xmlLeaf "cloud" "")
-     { elAttribs =
-         (  mb (Attr (qualName "domain")) (rssCloudDomain cl)
-	 ++ mb (Attr (qualName "port"))   (rssCloudPort cl)
-	 ++ mb (Attr (qualName "path"))   (rssCloudPath cl)
-	 ++ mb (Attr (qualName "register")) (rssCloudRegister cl)
-	 ++ mb (Attr (qualName "protocol")) (rssCloudProtocol cl)
+     { elementAttributes =
+         (  mb ((,) (qualName "domain")) (rssCloudDomain cl)
+	 ++ mb ((,) (qualName "port"))   (rssCloudPort cl)
+	 ++ mb ((,) (qualName "path"))   (rssCloudPath cl)
+	 ++ mb ((,) (qualName "register")) (rssCloudRegister cl)
+	 ++ mb ((,) (qualName "protocol")) (rssCloudProtocol cl)
 	 ++ rssCloudAttrs cl) }
 
 xmlTextInput :: RSSTextInput -> XML.Element
 xmlTextInput ti =
-   (qualNode "textInput" $ map Elem $
+   (qualNode "textInput" $ map NodeElement $
      ( [ xmlLeaf "title" (rssTextInputTitle ti)
        , xmlLeaf "description"   (rssTextInputDesc ti)
        , xmlLeaf "name"  (rssTextInputName ti)
        , xmlLeaf "link"  (rssTextInputLink ti)
        ] ++ rssTextInputOther ti))
-     { elAttribs = rssTextInputAttrs ti }
+     { elementAttributes = rssTextInputAttrs ti }
 
 xmlSkipHours :: [Integer] -> XML.Element
 xmlSkipHours hs = 
-  (qualNode "skipHours" $ map Elem $
-    (map (\ n -> xmlLeaf "hour" (show n)) hs))
+  (qualNode "skipHours" $ map NodeElement $
+    (map (\ n -> xmlLeaf "hour" (pack $ show n)) hs))
 
-xmlSkipDays :: [String] -> XML.Element
+xmlSkipDays :: [Text] -> XML.Element
 xmlSkipDays hs = 
-  (qualNode "skipDayss" $ map Elem $
+  (qualNode "skipDayss" $ map NodeElement $
     (map (\ n -> xmlLeaf "day" n) hs))
 
 --
 
-xmlAttr :: String -> String -> XML.Attr
-xmlAttr k v = Attr (qualName k) v
+xmlAttr :: Text -> Text -> (XML.Name,Text)
+xmlAttr k v = ((qualName k), v)
 
-xmlLeaf :: String -> String -> XML.Element
+xmlLeaf :: Text -> Text -> XML.Element
 xmlLeaf tg txt = 
- blank_element{ elName = qualName tg
- 	      , elContent = [ Text blank_cdata { cdData = txt } ]
+ def{ elementName = qualName tg
+ 	      , elementNodes = [ NodeContent txt ]
 	      }
 
 ---

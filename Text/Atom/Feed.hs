@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings, StandaloneDeriving #-}
 --------------------------------------------------------------------
 -- |
 -- Module    : Text.Atom.Feed
@@ -12,20 +13,21 @@
 
 module Text.Atom.Feed where
 
-import qualified Text.XML.Light as XML
+import qualified Text.XML as XML
+import Data.Text
 
 -- *Core types
 
 -- NOTE: In the future we may want to have more structured
 -- types for these.
-type URI        = String
-type NCName     = String
-type Date       = String
-type MediaType  = String
+type URI        = Text
+type NCName     = Text
+type Date       = Text
+type MediaType  = Text
 
 data Feed
  = Feed
-      { feedId           :: String
+      { feedId           :: Text
       , feedTitle        :: TextContent
       , feedUpdated      :: Date
       , feedAuthors      :: [Person]
@@ -38,14 +40,14 @@ data Feed
       , feedRights       :: Maybe TextContent
       , feedSubtitle     :: Maybe TextContent
       , feedEntries      :: [Entry]
-      , feedAttrs        :: [XML.Attr]
+      , feedAttrs        :: [(XML.Name,Text)]
       , feedOther        :: [XML.Element]
       }
      deriving (Show)
 
 data Entry
  = Entry
-      { entryId           :: String
+      { entryId           :: Text
       , entryTitle        :: TextContent
       , entryUpdated      :: Date
       , entryAuthors      :: [Person]
@@ -59,24 +61,24 @@ data Entry
       , entrySummary      :: Maybe TextContent
       , entryInReplyTo    :: Maybe InReplyTo
       , entryInReplyTotal :: Maybe InReplyTotal
-      , entryAttrs        :: [XML.Attr]
+      , entryAttrs        :: [(XML.Name,Text)]
       , entryOther        :: [XML.Element]
       }
      deriving (Show)
 
 data EntryContent
- = TextContent   String
- | HTMLContent   String
+ = TextContent   Text
+ | HTMLContent   Text
  | XHTMLContent  XML.Element
- | MixedContent  (Maybe String) [XML.Content]
+ | MixedContent  (Maybe Text) [XML.Node]
  | ExternalContent (Maybe MediaType) URI
      deriving (Show)
 
 data Category
  = Category
-       { catTerm   :: String         -- ^ the tag\/term of the category.
+       { catTerm   :: Text         -- ^ the tag\/term of the category.
        , catScheme :: Maybe URI      -- ^ optional URL for identifying the categorization scheme.
-       , catLabel  :: Maybe String   -- ^ human-readable label of the category
+       , catLabel  :: Maybe Text   -- ^ human-readable label of the category
        , catOther  :: [XML.Element]  -- ^ unknown elements, for extensibility.
        }
      deriving (Show)
@@ -85,10 +87,10 @@ data Category
 data Generator
  = Generator
        { genURI     :: Maybe URI
-       , genVersion :: Maybe String
-       , genText    :: String
+       , genVersion :: Maybe Text
+       , genText    :: Text
        }
-     deriving (Eq, Show)
+     deriving (Eq, Show, Read)
 
 data Link
  = Link
@@ -96,24 +98,24 @@ data Link
          -- ToDo: make the switch over to using the Atom.Feed.Link relation type.
       , linkRel      :: Maybe (Either NCName URI)
       , linkType     :: Maybe MediaType
-      , linkHrefLang :: Maybe String
-      , linkTitle    :: Maybe String
-      , linkLength   :: Maybe String
-      , linkAttrs    :: [XML.Attr]
+      , linkHrefLang :: Maybe Text
+      , linkTitle    :: Maybe Text
+      , linkLength   :: Maybe Text
+      , linkAttrs    :: [(XML.Name,Text)]
       , linkOther    :: [XML.Element]
       }
      deriving (Show)
 
 data TextContent
- = TextString  String
- | HTMLString  String
- | XHTMLString XML.Element
+ = TextText  Text
+ | HTMLText  Text
+ | XHTMLText XML.Element
      deriving (Show)
 
-txtToString :: TextContent -> String
-txtToString (TextString s) = s
-txtToString (HTMLString s) = s
-txtToString (XHTMLString x) = show x
+txtToText :: TextContent -> Text
+txtToText (TextText s) = s
+txtToText (HTMLText s) = s
+txtToText (XHTMLText x) = pack $ show x
 
 data Source
  = Source
@@ -121,7 +123,7 @@ data Source
       , sourceCategories  :: [Category]
       , sourceGenerator   :: Maybe Generator
       , sourceIcon        :: Maybe URI
-      , sourceId          :: Maybe String
+      , sourceId          :: Maybe Text
       , sourceLinks       :: [Link]
       , sourceLogo        :: Maybe URI
       , sourceRights      :: Maybe TextContent
@@ -133,14 +135,17 @@ data Source
      deriving (Show)
 
 
+-- deriving instance Ord XML.Node
+-- deriving instance Ord XML.Element
+
 data Person
  = Person
-     { personName  :: String
+     { personName  :: Text
      , personURI   :: Maybe URI
-     , personEmail :: Maybe String
+     , personEmail :: Maybe Text
      , personOther :: [XML.Element]
      }
-     deriving (Show)
+     deriving (Show, Eq) --, Ord)
 
 data InReplyTo
  = InReplyTo
@@ -148,21 +153,21 @@ data InReplyTo
      , replyToHRef    :: Maybe URI
      , replyToType    :: Maybe MediaType
      , replyToSource  :: Maybe URI
-     , replyToOther   :: [XML.Attr]
-     , replyToContent :: [XML.Content]
+     , replyToOther   :: [(XML.Name,Text)]
+     , replyToContent :: [XML.Node]
      }
      deriving (Show)
 
 data InReplyTotal
  = InReplyTotal
      { replyToTotal      :: Integer -- non-negative :)
-     , replyToTotalOther :: [XML.Attr]
+     , replyToTotalOther :: [(XML.Name,Text)]
      }
      deriving (Show)
 
 -- *Smart Constructors
 
-newCategory :: String -- ^catTerm
+newCategory :: Text -- ^catTerm
             -> Category
 newCategory t = Category
   { catTerm   = t
@@ -171,7 +176,7 @@ newCategory t = Category
   , catOther  = []
   }
 
-nullFeed :: String  -- ^feedId
+nullFeed :: Text  -- ^feedId
          -> TextContent -- ^feedTitle
          -> Date -- ^feedUpdated
          -> Feed
@@ -193,7 +198,7 @@ nullFeed i t u = Feed
       , feedOther        = []
       }
 
-nullEntry :: String -- ^entryId
+nullEntry :: Text -- ^entryId
           -> TextContent -- ^entryTitle
           -> Date -- ^entryUpdated
           -> Entry
@@ -217,7 +222,7 @@ nullEntry i t u = Entry
       }
 
 
-nullGenerator :: String -- ^genText
+nullGenerator :: Text -- ^genText
               -> Generator
 nullGenerator t = Generator
   { genURI     = Nothing

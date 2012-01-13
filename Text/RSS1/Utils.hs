@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 --------------------------------------------------------------------
 -- |
 -- Module    : Text.RSS1.Utils
@@ -12,90 +13,91 @@
 
 module Text.RSS1.Utils where
 
-import Text.XML.Light      as XML
-import Text.XML.Light.Proc as XML
+import Text.XML as XML
+import Text.Feed.Util as XML
 import Text.DublinCore.Types
 
 import Data.Maybe (listToMaybe, mapMaybe)
+import Data.Text (Text)
 
-pQNodes :: QName -> XML.Element -> [XML.Element]
+pQNodes :: Name -> XML.Element -> [XML.Element]
 pQNodes = XML.findChildren
 
-pNode      :: String -> XML.Element -> Maybe XML.Element
+pNode      :: Text -> XML.Element -> Maybe XML.Element
 pNode x e  = listToMaybe (pQNodes (qualName (rss10NS,Nothing) x) e)
 
-pQNode        :: QName -> XML.Element -> Maybe XML.Element
+pQNode        :: Name -> XML.Element -> Maybe XML.Element
 pQNode x e    = listToMaybe (pQNodes x e)
 
-pLeaf        :: String -> XML.Element -> Maybe String
+pLeaf        :: Text -> XML.Element -> Maybe Text
 pLeaf x e    = strContent `fmap` pQNode (qualName (rss10NS,Nothing) x) e
 
-pQLeaf        :: (Maybe String,Maybe String) -> String -> XML.Element -> Maybe String
+pQLeaf        :: (Maybe Text,Maybe Text) -> Text -> XML.Element -> Maybe Text
 pQLeaf ns x e = strContent `fmap` pQNode (qualName ns x) e
 
-pAttr        :: (Maybe String, Maybe String) -> String -> XML.Element -> Maybe String
-pAttr ns x e = lookup (qualName ns x) [ (k,v) | Attr k v <- elAttribs e ]
+pAttr        :: (Maybe Text, Maybe Text) -> Text -> XML.Element -> Maybe Text
+pAttr ns x e = lookup (qualName ns x) [ (k,v) | (k,v) <- elementAttributes e ]
 
-pMany        :: (Maybe String,Maybe String) -> String -> (XML.Element -> Maybe a) -> XML.Element -> [a]
+pMany        :: (Maybe Text,Maybe Text) -> Text -> (XML.Element -> Maybe a) -> XML.Element -> [a]
 pMany ns p f e  = mapMaybe f (pQNodes (qualName ns p) e)
 
 children     :: XML.Element -> [XML.Element]
-children e    = onlyElems (elContent e)
+children e    = onlyElems (elementNodes e)
 
-qualName :: (Maybe String, Maybe String) -> String -> QName
-qualName (ns,pre) x = QName{qName=x,qURI=ns,qPrefix=pre}
+qualName :: (Maybe Text, Maybe Text) -> Text -> Name
+qualName (ns,pre) x = Name{nameLocalName=x,nameNamespace=ns,namePrefix=pre}
 
-rssPrefix, rss10NS :: Maybe String
+rssPrefix, rss10NS :: Maybe Text
 rss10NS = Just "http://purl.org/rss/1.0/"
 rssPrefix = Nothing
 
-rdfPrefix, rdfNS :: Maybe String
+rdfPrefix, rdfNS :: Maybe Text
 rdfNS = Just "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
 rdfPrefix = Just "rdf"
 
-synPrefix, synNS :: Maybe String
+synPrefix, synNS :: Maybe Text
 synNS = Just "http://purl.org/rss/1.0/modules/syndication/"
 synPrefix = Just "sy"
 
-taxPrefix, taxNS :: Maybe String
+taxPrefix, taxNS :: Maybe Text
 taxNS = Just "http://purl.org/rss/1.0/modules/taxonomy/"
 taxPrefix = Just "taxo"
 
-conPrefix, conNS :: Maybe String
+conPrefix, conNS :: Maybe Text
 conNS = Just "http://purl.org/rss/1.0/modules/content/"
 conPrefix = Just "content"
 
-dcPrefix, dcNS :: Maybe String
+dcPrefix, dcNS :: Maybe Text
 dcNS = Just "http://purl.org/dc/elements/1.1/"
 dcPrefix = Just "dc"
 
-rdfName :: String -> QName
-rdfName x = QName{qName=x,qURI=rdfNS,qPrefix=rdfPrefix}
+rdfName :: Text -> Name
+rdfName x = Name{nameLocalName=x,nameNamespace=rdfNS,namePrefix=rdfPrefix}
 
-rssName :: String -> QName
-rssName x = QName{qName=x,qURI=rss10NS,qPrefix=rssPrefix}
+rssName :: Text -> Name
+rssName x = Name{nameLocalName=x,nameNamespace=rss10NS,namePrefix=rssPrefix}
 
-synName :: String -> QName
-synName x = QName{qName=x,qURI=synNS,qPrefix=synPrefix}
+synName :: Text -> Name
+synName x = Name{nameLocalName=x,nameNamespace=synNS,namePrefix=synPrefix}
 
-known_rss_elts :: [QName]
+known_rss_elts :: [Name]
 known_rss_elts = map rssName [ "channel", "item", "image", "textinput" ]
 
-known_syn_elts :: [QName]
+known_syn_elts :: [Name]
 known_syn_elts = map synName [ "updateBase", "updateFrequency", "updatePeriod" ]
 
-known_dc_elts :: [QName]
+known_dc_elts :: [Name]
 known_dc_elts  = map (qualName (dcNS,dcPrefix)) dc_element_names
 
-known_tax_elts :: [QName]
+known_tax_elts :: [Name]
 known_tax_elts = map (qualName (taxNS,taxPrefix)) [ "topic", "topics" ]
 
-known_con_elts :: [QName]
+known_con_elts :: [Name]
 known_con_elts = map (qualName (conNS,conPrefix)) [ "items", "item", "format", "encoding" ]
 
 removeKnownElts :: XML.Element -> [XML.Element]
 removeKnownElts e = 
-  filter (\ e1 -> not (elName e1 `elem` known_elts)) (children e)
+  filter (\ e1 -> not (elementName e1 `elem` known_elts)) (children e)
  where
   known_elts = 
     concat [ known_rss_elts 
@@ -105,9 +107,9 @@ removeKnownElts e =
 	   , known_tax_elts
 	   ]
 
-removeKnownAttrs :: XML.Element -> [XML.Attr]
+removeKnownAttrs :: XML.Element -> [(XML.Name,Text)]
 removeKnownAttrs e = 
-  filter (\ a -> not (attrKey a `elem` known_attrs)) (elAttribs e)
+  filter (\ (k,_) -> not (k `elem` known_attrs)) (elementAttributes e)
  where
   known_attrs = 
      map rdfName [ "about" ]

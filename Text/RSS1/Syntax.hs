@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 --------------------------------------------------------------------
 -- |
 -- Module    : Text.RSS1.Syntax
@@ -12,23 +13,24 @@
 
 module Text.RSS1.Syntax where
 
-import Text.XML.Light.Types as XML
+import Data.Text
+import Text.XML as XML
 import Text.DublinCore.Types
 
-type URIString   = String
-type TitleString = String
-type TimeString  = String
-type TextString  = String
+type URIString   = Text
+type TitleString = Text
+type TimeString  = Text
+type TextText  = Text
 
 data Feed
- = Feed { feedVersion   :: String
+ = Feed { feedVersion   :: Text
         , feedChannel   :: Channel
         , feedImage     :: Maybe Image
         , feedItems     :: [Item]
         , feedTextInput :: Maybe TextInputInfo
         , feedTopics    :: [TaxonomyTopic]
         , feedOther     :: [XML.Element]
-        , feedAttrs     :: [XML.Attr]
+        , feedAttrs     :: [(XML.Name,Text)]
         }
         deriving (Show)
 
@@ -37,7 +39,7 @@ data Channel
         { channelURI          :: URIString
         , channelTitle        :: TitleString
         , channelLink         :: URIString
-        , channelDesc         :: TextString
+        , channelDesc         :: TextText
            -- these are indirect RDF associations to elements declared
            -- outside the channel element in the RDF \/ feed document.
         , channelImageURI     :: Maybe URIString
@@ -47,49 +49,49 @@ data Channel
         , channelUpdatePeriod :: Maybe UpdatePeriod
         , channelUpdateFreq   :: Maybe Integer
         , channelUpdateBase   :: Maybe TimeString   -- format is yyyy-mm-ddThh:mm
-        , channelContent      :: [ContentInfo]
+        , channelementNodes      :: [ContentInfo]
         , channelTopics       :: [URIString]
         , channelOther        :: [XML.Element]
-        , channelAttrs        :: [XML.Attr]
+        , channelAttrs        :: [(XML.Name,Text)]
         }
         deriving (Show)
 
 data Image
  = Image
         { imageURI    :: URIString   -- the image resource, most likely.
-        , imageTitle  :: TextString  -- the "alt"ernative text.
+        , imageTitle  :: TextText  -- the "alt"ernative text.
         , imageURL    :: URIString
         , imageLink   :: URIString   -- the href of the rendered img resource.
         , imageDC     :: [DCItem]
         , imageOther  :: [XML.Element]
-        , imageAttrs  :: [XML.Attr]
+        , imageAttrs  :: [(XML.Name,Text)]
         }
         deriving (Show)
 
 data Item
  = Item
         { itemURI     :: URIString
-        , itemTitle   :: TextString
+        , itemTitle   :: TextText
         , itemLink    :: URIString
-        , itemDesc    :: Maybe TextString
+        , itemDesc    :: Maybe TextText
         , itemDC      :: [DCItem]
         , itemTopics  :: [URIString]
         , itemContent :: [ContentInfo]
         , itemOther   :: [XML.Element]
-        , itemAttrs   :: [XML.Attr]
+        , itemAttrs   :: [(XML.Name,Text)]
         }
         deriving (Show)
 
 data TextInputInfo
  = TextInputInfo
         { textInputURI   :: URIString
-        , textInputTitle :: TextString
-        , textInputDesc  :: TextString
-        , textInputName  :: TextString
+        , textInputTitle :: TextText
+        , textInputDesc  :: TextText
+        , textInputName  :: TextText
         , textInputLink  :: URIString
         , textInputDC    :: [DCItem]
         , textInputOther :: [XML.Element]
-        , textInputAttrs :: [XML.Attr]
+        , textInputAttrs :: [(XML.Name,Text)]
         }
         deriving (Show)
 
@@ -97,8 +99,8 @@ data TaxonomyTopic
  = TaxonomyTopic
         { taxonomyURI    :: URIString
         , taxonomyLink   :: URIString
-        , taxonomyTitle  :: Maybe String
-        , taxonomyDesc   :: Maybe String
+        , taxonomyTitle  :: Maybe Text
+        , taxonomyDesc   :: Maybe Text
         , taxonomyTopics :: [URIString]
         , taxonomyDC     :: [DCItem]
         , taxonomyOther  :: [XML.Element]
@@ -119,7 +121,7 @@ data ContentInfo
         { contentURI      :: Maybe URIString
         , contentFormat   :: Maybe URIString
         , contentEncoding :: Maybe URIString
-        , contentValue    :: Maybe String -- should be: RDFValue
+        , contentValue    :: Maybe Text -- should be: RDFValue
         }
         deriving (Eq, Show)
 
@@ -150,13 +152,13 @@ nullChannel uri title =
         , channelUpdatePeriod = Nothing
         , channelUpdateFreq   = Nothing
         , channelUpdateBase   = Nothing
-        , channelContent      = []
+        , channelementNodes      = []
         , channelTopics       = []
         , channelOther        = []
         , channelAttrs        = []
         }
 
-nullImage :: URIString -> String -> URIString -> Image
+nullImage :: URIString -> Text -> URIString -> Image
 nullImage imguri title link = 
   Image
         { imageURI    = imguri
@@ -168,7 +170,7 @@ nullImage imguri title link =
         , imageAttrs  = []
         }
 
-nullItem :: URIString -> TextString -> URIString -> Item
+nullItem :: URIString -> TextText -> URIString -> Item
 nullItem uri title link = 
   Item
         { itemURI     = uri
@@ -182,7 +184,7 @@ nullItem uri title link =
         , itemAttrs   = []
         }
 
-nullTextInputInfo :: URIString -> TextString -> TextString -> URIString -> TextInputInfo
+nullTextInputInfo :: URIString -> TextText -> TextText -> URIString -> TextInputInfo
 nullTextInputInfo uri title nm link =
   TextInputInfo
         { textInputURI   = uri

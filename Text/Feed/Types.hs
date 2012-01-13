@@ -15,7 +15,9 @@ module Text.Feed.Types where
 import Text.RSS.Syntax  as RSS
 import Text.Atom.Feed   as Atom
 import Text.RSS1.Syntax as RSS1
-import Text.XML.Light as XML
+import Text.XML as XML
+
+import Data.Text (Text)
 
 -- | The abstract type of feed documents. The internal representation
 -- is as whatever feed variant type the document was either imported or
@@ -42,7 +44,7 @@ data Item
 -- | The kinds of feed documents supported.
 data FeedKind
  = AtomKind
- | RSSKind (Maybe String)  -- Nothing => default version (2.0)
- | RDFKind (Maybe String)  -- Nothing => default version (1.0)
+ | RSSKind (Maybe Text)  -- Nothing => default version (2.0)
+ | RDFKind (Maybe Text)  -- Nothing => default version (1.0)
  deriving (Eq, Show)
 

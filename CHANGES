@@ -1,3 +1,10 @@
+Version 1.0:
+
+ * port to xml-conduit, improving memory usage
+ * fix namespace prefix for Atom threading extension
+ * fix month and second in toFeedDateText utility function
+ * Person now derives Eq
+
 Version 0.3.7:
 
  * <feed> parsing: made <title> be optional.

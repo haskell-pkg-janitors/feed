@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 --------------------------------------------------------------------
 -- |
 -- Module    : Text.Feed.Query
@@ -15,34 +16,34 @@ module Text.Feed.Query
        ( Text.Feed.Query.feedItems -- :: Feed.Feed -> [Feed.Item]
 
        , FeedGetter               -- type _ a = Feed -> a
-       , getFeedTitle             -- :: FeedGetter String
-       , getFeedAuthor            -- :: FeedGetter String
-       , getFeedHome              -- :: FeedGetter URLString
-       , getFeedHTML              -- :: FeedGetter URLString
-       , getFeedDescription       -- :: FeedGetter String
-       , getFeedPubDate           -- :: FeedGetter DateString
-       , getFeedLastUpdate        -- :: FeedGetter (Maybe String)
-       , getFeedDate              -- :: FeedGetter DateString
-       , getFeedLogoLink          -- :: FeedGetter URLString
-       , getFeedLanguage          -- :: FeedGetter String
-       , getFeedCategories        -- :: FeedGetter [(String, Maybe String)]
-       , getFeedGenerator         -- :: FeedGetter String
+       , getFeedTitle             -- :: FeedGetter Text
+       , getFeedAuthor            -- :: FeedGetter Text
+       , getFeedHome              -- :: FeedGetter URLText
+       , getFeedHTML              -- :: FeedGetter URLText
+       , getFeedDescription       -- :: FeedGetter Text
+       , getFeedPubDate           -- :: FeedGetter DateText
+       , getFeedLastUpdate        -- :: FeedGetter (Maybe Text)
+       , getFeedDate              -- :: FeedGetter DateText
+       , getFeedLogoLink          -- :: FeedGetter URLText
+       , getFeedLanguage          -- :: FeedGetter Text
+       , getFeedCategories        -- :: FeedGetter [(Text, Maybe Text)]
+       , getFeedGenerator         -- :: FeedGetter Text
        , getFeedItems             -- :: FeedGetter [Item]
 
        , ItemGetter               -- type _ a = Item -> Maybe a
-       , getItemTitle             -- :: ItemGetter (String)
-       , getItemLink              -- :: ItemGetter (String)
-       , getItemPublishDate       -- :: ItemGetter (DateString)
-       , getItemDate              -- :: ItemGetter (DateString)
-       , getItemAuthor            -- :: ItemGetter (String)
-       , getItemCommentLink       -- :: ItemGetter (URLString)
-       , getItemEnclosure         -- :: ItemGetter (String,Maybe String,Integer)
-       , getItemFeedLink          -- :: ItemGetter (URLString)
-       , getItemId                -- :: ItemGetter (Bool,String)
-       , getItemCategories        -- :: ItemGetter [String]
-       , getItemRights            -- :: ItemGetter String
-       , getItemSummary           -- :: ItemGetter String
-       , getItemDescription       -- :: ItemGetter String (synonym of previous.)
+       , getItemTitle             -- :: ItemGetter (Text)
+       , getItemLink              -- :: ItemGetter (Text)
+       , getItemPublishDate       -- :: ItemGetter (DateText)
+       , getItemDate              -- :: ItemGetter (DateText)
+       , getItemAuthor            -- :: ItemGetter (Text)
+       , getItemCommentLink       -- :: ItemGetter (URLText)
+       , getItemEnclosure         -- :: ItemGetter (Text,Maybe Text,Integer)
+       , getItemFeedLink          -- :: ItemGetter (URLText)
+       , getItemId                -- :: ItemGetter (Bool,Text)
+       , getItemCategories        -- :: ItemGetter [Text]
+       , getItemRights            -- :: ItemGetter Text
+       , getItemSummary           -- :: ItemGetter Text
+       , getItemDescription       -- :: ItemGetter Text (synonym of previous.)
 
        ) where
 
@@ -51,12 +52,13 @@ import Text.Feed.Types as Feed
 import Text.RSS.Syntax  as RSS
 import Text.Atom.Feed   as Atom
 import Text.RSS1.Syntax as RSS1
-import Text.XML.Light as XML
+import Text.XML as XML
+import Text.Feed.Util as XML
 
 import Text.DublinCore.Types
 
-import Data.List
 import Data.Maybe
+import Data.Text as T (Text,isPrefixOf,reverse,unpack,words)
 --import Debug.Trace
 
 feedItems :: Feed.Feed -> [Feed.Item]
@@ -74,7 +76,7 @@ getFeedItems = Text.Feed.Query.feedItems
 
 type FeedGetter a = Feed.Feed -> Maybe a
 
-getFeedAuthor       :: Feed.Feed -> (Maybe String)
+getFeedAuthor       :: Feed.Feed -> (Maybe Text)
 getFeedAuthor ft =
   case ft of
     Feed.AtomFeed f -> case Atom.feedAuthors f of { [] -> Nothing; (x:_) -> Just (Atom.personName x)}
@@ -90,7 +92,7 @@ getFeedAuthor ft =
  where
   isAuthor dc  = dcElt dc == DC_Creator
 
-getFeedTitle       :: Feed.Feed -> String
+getFeedTitle       :: Feed.Feed -> Text
 getFeedTitle ft =
   case ft of
     Feed.AtomFeed f -> (contentToStr $ Atom.feedTitle f)
@@ -101,7 +103,7 @@ getFeedTitle ft =
         Just e1 -> fromMaybe "" (fmap XML.strContent $ findElement (unqual "title") e1)
         Nothing -> ""
 
-getFeedHome        :: FeedGetter URLString
+getFeedHome        :: FeedGetter URLText
 getFeedHome ft =
   case ft of
     Feed.AtomFeed f ->
@@ -117,7 +119,7 @@ getFeedHome ft =
  where
   isSelf lr = toStr (Atom.linkRel lr) == "self"
 
-getFeedHTML        :: FeedGetter URLString
+getFeedHTML        :: FeedGetter URLText
 getFeedHTML ft =
   case ft of
     Feed.AtomFeed f -> 
@@ -133,10 +135,10 @@ getFeedHTML ft =
  where 
   isSelf lr = toStr (Atom.linkRel lr) == "alternate" && isHTMLType (linkType lr)
 
-  isHTMLType (Just str) = "lmth" `isPrefixOf` (reverse str)
+  isHTMLType (Just str) = "lmth" `T.isPrefixOf` (T.reverse str)
   isHTMLType _ = True -- if none given, assume html.
 
-getFeedDescription :: FeedGetter String
+getFeedDescription :: FeedGetter Text
 getFeedDescription ft =
   case ft of
     Feed.AtomFeed f -> fmap contentToStr (Atom.feedSubtitle f)
@@ -147,7 +149,7 @@ getFeedDescription ft =
         Just e1 -> fmap XML.strContent $ findElement (unqual "description") e1
         Nothing -> Nothing
 
-getFeedPubDate     :: FeedGetter DateString
+getFeedPubDate     :: FeedGetter DateText
 getFeedPubDate ft =
   case ft of
     Feed.AtomFeed f -> Just $ Atom.feedUpdated f
@@ -163,7 +165,7 @@ getFeedPubDate ft =
  where
   isDate dc  = dcElt dc == DC_Date
 
-getFeedLastUpdate  :: FeedGetter (String)
+getFeedLastUpdate  :: FeedGetter (Text)
 getFeedLastUpdate ft =
   case ft of
     Feed.AtomFeed f -> Just $ Atom.feedUpdated f
@@ -179,10 +181,10 @@ getFeedLastUpdate ft =
  where
   isDate dc  = dcElt dc == DC_Date
 
-getFeedDate        :: FeedGetter DateString
+getFeedDate        :: FeedGetter DateText
 getFeedDate ft = getFeedPubDate ft
 
-getFeedLogoLink    :: FeedGetter URLString
+getFeedLogoLink    :: FeedGetter URLText
 getFeedLogoLink ft =
   case ft of
     Feed.AtomFeed f -> Atom.feedLogo f
@@ -194,11 +196,11 @@ getFeedLogoLink ft =
        v  <- findElement (unqual "url") e1
        return (XML.strContent v)
 
-getFeedLanguage    :: FeedGetter String
+getFeedLanguage    :: FeedGetter Text
 getFeedLanguage ft =
   case ft of
     Feed.AtomFeed f -> 
-       lookupAttr (unqual "lang"){qPrefix=Just "xml"} (Atom.feedAttrs f)
+       lookupAttr (unqual "lang"){namePrefix=Just "xml"} (Atom.feedAttrs f)
     Feed.RSSFeed  f -> RSS.rssLanguage (RSS.rssChannel f)
     Feed.RSS1Feed f -> 
        case filter isLang (RSS1.channelDC $ RSS1.feedChannel f) of
@@ -212,7 +214,7 @@ getFeedLanguage ft =
   isLang dc  = dcElt dc == DC_Language
 
 
-getFeedCategories  :: Feed.Feed -> [(String, Maybe String)]
+getFeedCategories  :: Feed.Feed -> [(Text, Maybe Text)]
 getFeedCategories ft =
   case ft of
     Feed.AtomFeed f -> map (\ c -> (Atom.catTerm c, Atom.catScheme c)) (Atom.feedCategories f)
@@ -226,7 +228,7 @@ getFeedCategories ft =
  where
   isCat dc  = dcElt dc == DC_Subject
 
-getFeedGenerator   :: FeedGetter String
+getFeedGenerator   :: FeedGetter Text
 getFeedGenerator ft =
   case ft of
     Feed.AtomFeed f -> do
@@ -246,7 +248,7 @@ getFeedGenerator ft =
 
 type ItemGetter a = Feed.Item -> Maybe a
 
-getItemTitle :: ItemGetter String
+getItemTitle :: ItemGetter Text
 getItemTitle it = 
   case it of
     Feed.AtomItem i -> Just (contentToStr $ Atom.entryTitle i)
@@ -254,7 +256,7 @@ getItemTitle it =
     Feed.RSS1Item i -> Just (RSS1.itemTitle i)
     Feed.XMLItem e  -> fmap XML.strContent $ findElement (unqual "title") e
 
-getItemLink :: ItemGetter String
+getItemLink :: ItemGetter Text
 getItemLink it =
   case it of
     Feed.AtomItem i -> 
@@ -268,11 +270,11 @@ getItemLink it =
  where
   isSelf lr = toStr (Atom.linkRel lr) == "alternate" && isHTMLType (linkType lr)
 
-  isHTMLType (Just str) = "lmth" `isPrefixOf` (reverse str)
+  isHTMLType (Just str) = "lmth" `T.isPrefixOf` (T.reverse str)
   isHTMLType _ = True -- if none given, assume html.
 
 
-getItemPublishDate :: ItemGetter DateString
+getItemPublishDate :: ItemGetter DateText
 getItemPublishDate it =
   case it of
     Feed.AtomItem i -> Just $ Atom.entryUpdated i
@@ -286,10 +288,10 @@ getItemPublishDate it =
  where
   isDate dc  = dcElt dc == DC_Date
 
-getItemDate :: ItemGetter DateString
+getItemDate :: ItemGetter DateText
 getItemDate it = getItemPublishDate it
 
-getItemAuthor      :: ItemGetter String
+getItemAuthor      :: ItemGetter Text
 getItemAuthor it = 
   case it of
     Feed.AtomItem i -> case Atom.entryAuthors i of { [] -> Nothing; (x:_) -> Just (Atom.personName x)}
@@ -302,7 +304,7 @@ getItemAuthor it =
  where
   isAuthor dc  = dcElt dc == DC_Creator
 
-getItemCommentLink :: ItemGetter URLString
+getItemCommentLink :: ItemGetter URLText
 getItemCommentLink it = 
   case it of
     Feed.AtomItem e -> 
@@ -320,7 +322,7 @@ getItemCommentLink it =
   isReplies lr = toStr (Atom.linkRel lr) == "replies"
   isRel dc = dcElt dc == DC_Relation
 
-getItemEnclosure   :: ItemGetter (String, Maybe String, Integer)
+getItemEnclosure   :: ItemGetter (Text, Maybe Text, Integer)
 getItemEnclosure it = 
   case it of
     Feed.AtomItem e ->
@@ -329,7 +331,7 @@ getItemEnclosure it =
                         case Atom.linkLength l of 
                           Nothing -> 0
                           Just x  -> 
-                            case reads x of { [] -> 0; ((v,_):_) -> v })
+                            case reads $ unpack x of { [] -> 0; ((v,_):_) -> v })
          _ -> Nothing
     Feed.RSSItem i  ->
        fmap (\ e -> (RSS.rssEnclosureURL e, Just (RSS.rssEnclosureType e), RSS.rssEnclosureLength e)) 
@@ -344,10 +346,10 @@ getItemEnclosure it =
 
    toV e = ( fromMaybe "" (fmap XML.strContent (findElement (unqual "url") e))
            , fmap XML.strContent (findElement (unqual "type") e)
-           , fromMaybe 0 (fmap (read . XML.strContent) (findElement (unqual "length") e))
+           , fromMaybe 0 (fmap (read . unpack . XML.strContent) (findElement (unqual "length") e))
            )
 
-getItemFeedLink    :: ItemGetter URLString
+getItemFeedLink    :: ItemGetter URLText
 getItemFeedLink it = 
   case it of
     Feed.AtomItem e -> 
@@ -364,7 +366,7 @@ getItemFeedLink it =
         Nothing -> Nothing
         Just s  -> fmap XML.strContent (findElement (unqual "url") s)
 
-getItemId          :: ItemGetter (Bool,String)
+getItemId          :: ItemGetter (Bool,Text)
 getItemId it = 
   case it of
     Feed.AtomItem e -> Just (True, Atom.entryId e)
@@ -381,7 +383,7 @@ getItemId it =
  where
   isId dc = dcElt dc == DC_Identifier
 
-getItemCategories  :: Feed.Item -> [String]
+getItemCategories  :: Feed.Item -> [Text]
 getItemCategories it = 
   case it of
     Feed.AtomItem i -> map Atom.catTerm $ Atom.entryCategories i
@@ -391,10 +393,10 @@ getItemCategories it =
  where
     -- get RSS1 categories; either via DublinCore's subject (or taxonomy topics...not yet.)
    getCats1 i1 = 
-     map (words.dcText) $ filter (\ dc -> dcElt dc == DC_Subject) $ RSS1.itemDC i1
+     map (T.words . dcText) $ filter (\ dc -> dcElt dc == DC_Subject) $ RSS1.itemDC i1
 
 
-getItemRights      :: ItemGetter String
+getItemRights      :: ItemGetter Text
 getItemRights it = 
   case it of
     Feed.AtomItem e -> fmap contentToStr $ Atom.entryRights e
@@ -407,10 +409,10 @@ getItemRights it =
  where
   isRights dc = dcElt dc == DC_Rights
 
-getItemSummary      :: ItemGetter String
+getItemSummary      :: ItemGetter Text
 getItemSummary it = getItemDescription it
 
-getItemDescription :: ItemGetter String
+getItemDescription :: ItemGetter Text
 getItemDescription it = 
   case it of
     Feed.AtomItem e -> fmap contentToStr $ Atom.entrySummary e
@@ -419,14 +421,14 @@ getItemDescription it =
     Feed.XMLItem _  -> Nothing
 
  -- strip away
-toStr :: Maybe (Either String String) -> String
+toStr :: Maybe (Either Text Text) -> Text
 toStr Nothing = ""
 toStr (Just (Left x)) = x
 toStr (Just (Right x)) = x
 
-contentToStr :: TextContent -> String
+contentToStr :: TextContent -> Text
 contentToStr x = 
   case x of
-    Atom.TextString  s -> s
-    Atom.HTMLString  s -> s
-    Atom.XHTMLString s -> XML.strContent s
+    Atom.TextText  s -> s
+    Atom.HTMLText  s -> s
+    Atom.XHTMLText s -> XML.strContent s

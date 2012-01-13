@@ -39,5 +39,5 @@ library
                      Text.Feed.Translate
                      Text.Feed.Util
     Ghc-Options:     -Wall
-    Build-Depends:   base >= 2 && < 4, haskell98, xml >= 1.2.6, utf8-string
+    Build-Depends:   base >= 4 && < 5, old-time, old-locale, haskell98, xml-conduit, xml-types, text, data-default, utf8-string
 

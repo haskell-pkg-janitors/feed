@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 --------------------------------------------------------------------
 -- |
 -- Module    : Text.RSS1.Import 
@@ -16,17 +17,18 @@ module Text.RSS1.Import
 
 import Text.RSS1.Syntax
 import Text.RSS1.Utils
-import Text.XML.Light      as XML
-import Text.XML.Light.Proc as XML
+import Text.XML as XML
+import Text.Feed.Util as XML
 import Text.DublinCore.Types
 
 import Data.Maybe (mapMaybe, fromMaybe)
+import Data.Text (unpack)
 import Control.Monad (guard,mplus)
 
 ---
 elementToFeed :: XML.Element -> Maybe Feed
 elementToFeed e = do
-  guard (elName e == rdfName "RDF")
+  guard (elementName e == rdfName "RDF")
   ver <- pAttr (Nothing,Nothing) "xmlns" e `mplus` rss10NS
   ch  <- pNode "channel" e    >>= elementToChannel
   let mbImg = pNode "image" e >>= elementToImage
@@ -68,12 +70,12 @@ elementToTextInput e = do
     , textInputLink  = li
     , textInputDC    = dcs
     , textInputOther = es
-    , textInputAttrs = elAttribs e
+    , textInputAttrs = elementAttributes e
     }
 
 elementToItem :: XML.Element -> Maybe Item
 elementToItem e = do
-  guard (elName e == qualName (rss10NS,Nothing) "item")
+  guard (elementName e == qualName (rss10NS,Nothing) "item")
   let es = children e
   uri <- pAttr (rdfNS,rdfPrefix) "about" e
   ti  <- pQLeaf (rss10NS,Nothing) "title" e
@@ -99,7 +101,7 @@ elementToItem e = do
 elementToImage :: XML.Element -> Maybe Image
 elementToImage e = do
   let es = children e
-  let as = elAttribs e
+  let as = elementAttributes e
   uri <- pAttr (rdfNS,rdfPrefix) "about" e
   ti  <- pLeaf "title" e
   ur  <- pLeaf "url" e
@@ -146,7 +148,7 @@ elementToChannel e = do
           , channelUpdatePeriod = Nothing
           , channelUpdateFreq   = Nothing
           , channelUpdateBase   = Nothing
-	  , channelContent      = cs
+	  , channelementNodes      = cs
           , channelTopics       = tos
           , channelOther        = es_other
           , channelAttrs        = as_other
@@ -156,7 +158,7 @@ elementToChannel e = do
 addSyndication :: XML.Element -> Channel -> Channel
 addSyndication e ch = 
   ch{ channelUpdatePeriod = fmap toUpdatePeriod $ pQLeaf (synNS,synPrefix) "updatePeriod" e
-    , channelUpdateFreq   = fmap read $ pQLeaf (synNS,synPrefix) "updateFrequency" e
+    , channelUpdateFreq   = fmap (read . unpack) $ pQLeaf (synNS,synPrefix) "updateFrequency" e
     , channelUpdateBase   = pQLeaf (synNS,synPrefix) "updateBase" e
     }
  where
@@ -172,10 +174,10 @@ addSyndication e ch =
   
 elementToDC :: XML.Element -> Maybe DCItem
 elementToDC e = do
-  guard (qURI (elName e) == dcNS)
+  guard (nameNamespace (elementName e) == dcNS)
   let dcItem x = DCItem{dcElt=x,dcText=strContent e}
   return $ dcItem $
-   case qName $ elName e of
+   case nameLocalName $ elementName e of
      "title"       -> DC_Title
      "creator"     -> DC_Creator
      "subject"     -> DC_Subject
@@ -195,7 +197,7 @@ elementToDC e = do
 
 elementToTaxonomyTopic :: XML.Element -> Maybe TaxonomyTopic
 elementToTaxonomyTopic e = do
-  guard (elName e == qualName (taxNS,taxPrefix) "topic")
+  guard (elementName e == qualName (taxNS,taxPrefix) "topic")
   let es = children e
   uri <- pAttr (rdfNS,rdfPrefix) "about" e
   li <- pQLeaf (taxNS,taxPrefix) "link" e
@@ -211,7 +213,7 @@ elementToTaxonomyTopic e = do
 
 elementToContent :: XML.Element -> Maybe ContentInfo
 elementToContent e = do
-  guard (elName e == qualName (conNS,conPrefix) "items")
+  guard (elementName e == qualName (conNS,conPrefix) "items")
   return ContentInfo
     { contentURI      = pAttr (rdfNS,rdfPrefix) "about" e
     , contentFormat   = pQLeaf (conNS,conPrefix) "format" e
@@ -223,7 +225,7 @@ bagLeaves :: XML.Element -> [URIString]
 bagLeaves be = 
   mapMaybe 
     (\ e -> do
-      guard (elName e == qualName (rdfNS,rdfPrefix) "li")
+      guard (elementName e == qualName (rdfNS,rdfPrefix) "li")
       pAttr (rdfNS,rdfPrefix) "resource" e `mplus` 
         fmap strContent (pQNode (qualName (rdfNS,rdfPrefix) "li") e))
     (fromMaybe [] $ fmap children $ pQNode (qualName (rdfNS,rdfPrefix) "Bag") be)
@@ -233,7 +235,7 @@ bagElements :: XML.Element -> [XML.Element]
 bagElements be = 
   mapMaybe 
     (\ e -> do
-      guard (elName e == rdfName "li")
+      guard (elementName e == rdfName "li")
       return e)
     (fromMaybe [] $ fmap children $ pQNode (rdfName "Bag") be)
 -}
@@ -242,6 +244,6 @@ seqLeaves :: XML.Element -> [URIString]
 seqLeaves se = 
   mapMaybe 
     (\ e -> do
-      guard (elName e == rdfName "li")
+      guard (elementName e == rdfName "li")
       return (strContent e))
     (fromMaybe [] $ fmap children $ pQNode (rdfName "Seq") se)

@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 --------------------------------------------------------------------
 -- |
 -- Module    : Text.RSS.Syntax
@@ -15,7 +16,8 @@
 
 module Text.RSS.Syntax where
 
-import Text.XML.Light as XML
+import Data.Text
+import Text.XML as XML
 
 -- * Core Types
 
@@ -23,132 +25,132 @@ import Text.XML.Light as XML
 -- (versions 0.9x, 2.x)
 data RSS
  = RSS
-     { rssVersion :: String
-     , rssAttrs   :: [XML.Attr]
+     { rssVersion :: Text
+     , rssAttrs   :: [(XML.Name,Text)]
      , rssChannel :: RSSChannel
      , rssOther   :: [XML.Element]
      }
      deriving (Show)
 
-type URLString  = String
+type URLText  = Text
 -- | RFC 822 conforming.
-type DateString = String 
+type DateText = Text 
 
 data RSSChannel
  = RSSChannel
-     { rssTitle        :: String
-     , rssLink         :: URLString
-     , rssDescription  :: String
+     { rssTitle        :: Text
+     , rssLink         :: URLText
+     , rssDescription  :: Text
      , rssItems        :: [RSSItem]
-     , rssLanguage     :: Maybe String
-     , rssCopyright    :: Maybe String
-     , rssEditor       :: Maybe String
-     , rssWebMaster    :: Maybe String
-     , rssPubDate      :: Maybe DateString  -- ^ rfc 822 conforming.
-     , rssLastUpdate   :: Maybe DateString  -- ^ rfc 822 conforming.
+     , rssLanguage     :: Maybe Text
+     , rssCopyright    :: Maybe Text
+     , rssEditor       :: Maybe Text
+     , rssWebMaster    :: Maybe Text
+     , rssPubDate      :: Maybe DateText  -- ^ rfc 822 conforming.
+     , rssLastUpdate   :: Maybe DateText  -- ^ rfc 822 conforming.
      , rssCategories   :: [RSSCategory]
-     , rssGenerator    :: Maybe String
-     , rssDocs         :: Maybe URLString
+     , rssGenerator    :: Maybe Text
+     , rssDocs         :: Maybe URLText
      , rssCloud        :: Maybe RSSCloud
      , rssTTL          :: Maybe Integer
      , rssImage        :: Maybe RSSImage
-     , rssRating       :: Maybe String
+     , rssRating       :: Maybe Text
      , rssTextInput    :: Maybe RSSTextInput
      , rssSkipHours    :: Maybe [Integer]
-     , rssSkipDays     :: Maybe [String]
+     , rssSkipDays     :: Maybe [Text]
      , rssChannelOther :: [XML.Element]
      }
      deriving (Show)
 
 data RSSItem
  = RSSItem
-     { rssItemTitle        :: Maybe String
-     , rssItemLink         :: Maybe URLString
-     , rssItemDescription  :: Maybe String     -- ^if not present, the title is. (per spec, at least.)
-     , rssItemAuthor       :: Maybe String
+     { rssItemTitle        :: Maybe Text
+     , rssItemLink         :: Maybe URLText
+     , rssItemDescription  :: Maybe Text     -- ^if not present, the title is. (per spec, at least.)
+     , rssItemAuthor       :: Maybe Text
      , rssItemCategories   :: [RSSCategory]
-     , rssItemComments     :: Maybe URLString
+     , rssItemComments     :: Maybe URLText
      , rssItemEnclosure    :: Maybe RSSEnclosure
      , rssItemGuid         :: Maybe RSSGuid
-     , rssItemPubDate      :: Maybe DateString
+     , rssItemPubDate      :: Maybe DateText
      , rssItemSource       :: Maybe RSSSource
-     , rssItemAttrs        :: [XML.Attr]
+     , rssItemAttrs        :: [(XML.Name,Text)]
      , rssItemOther        :: [XML.Element]
      }
      deriving (Show)
 
 data RSSSource
  = RSSSource
-     { rssSourceURL    :: URLString
-     , rssSourceAttrs  :: [XML.Attr]
-     , rssSourceTitle  :: String
+     { rssSourceURL    :: URLText
+     , rssSourceAttrs  :: [(XML.Name,Text)]
+     , rssSourceTitle  :: Text
      }
      deriving (Show)
 
 data RSSEnclosure
  = RSSEnclosure
-     { rssEnclosureURL     :: URLString
+     { rssEnclosureURL     :: URLText
      , rssEnclosureLength  :: Integer
-     , rssEnclosureType    :: String
-     , rssEnclosureAttrs   :: [XML.Attr]
+     , rssEnclosureType    :: Text
+     , rssEnclosureAttrs   :: [(XML.Name,Text)]
      }
      deriving (Show)
 
 data RSSCategory
  = RSSCategory
-     { rssCategoryDomain   :: Maybe String
-     , rssCategoryAttrs    :: [XML.Attr]
-     , rssCategoryValue    :: String
+     { rssCategoryDomain   :: Maybe Text
+     , rssCategoryAttrs    :: [(XML.Name,Text)]
+     , rssCategoryValue    :: Text
      }
      deriving (Show)
 
 data RSSGuid
  = RSSGuid
      { rssGuidPermanentURL :: Maybe Bool
-     , rssGuidAttrs        :: [XML.Attr]
-     , rssGuidValue        :: String
+     , rssGuidAttrs        :: [(XML.Name,Text)]
+     , rssGuidValue        :: Text
      }
      deriving (Show)
 
 
 data RSSImage
  = RSSImage
-     { rssImageURL     :: URLString -- the URL to the image resource.
-     , rssImageTitle   :: String
-     , rssImageLink    :: URLString -- URL that the image resource should be an href to.
+     { rssImageURL     :: URLText -- the URL to the image resource.
+     , rssImageTitle   :: Text
+     , rssImageLink    :: URLText -- URL that the image resource should be an href to.
      , rssImageWidth   :: Maybe Integer
      , rssImageHeight  :: Maybe Integer
-     , rssImageDesc    :: Maybe String
+     , rssImageDesc    :: Maybe Text
      , rssImageOther   :: [XML.Element]
      }
      deriving (Show)
 
 data RSSCloud
  = RSSCloud
-     { rssCloudDomain   :: Maybe String
-     , rssCloudPort     :: Maybe String -- on purpose (i.e., not an int)
-     , rssCloudPath     :: Maybe String
-     , rssCloudRegister :: Maybe String
-     , rssCloudProtocol :: Maybe String
-     , rssCloudAttrs    :: [XML.Attr]
+     { rssCloudDomain   :: Maybe Text
+     , rssCloudPort     :: Maybe Text -- on purpose (i.e., not an int)
+     , rssCloudPath     :: Maybe Text
+     , rssCloudRegister :: Maybe Text
+     , rssCloudProtocol :: Maybe Text
+     , rssCloudAttrs    :: [(XML.Name,Text)]
      }
      deriving (Show)
 
 data RSSTextInput
  = RSSTextInput
-     { rssTextInputTitle :: String
-     , rssTextInputDesc  :: String
-     , rssTextInputName  :: String
-     , rssTextInputLink  :: URLString
-     , rssTextInputAttrs :: [XML.Attr]
+     { rssTextInputTitle :: Text
+     , rssTextInputDesc  :: Text
+     , rssTextInputName  :: Text
+     , rssTextInputLink  :: URLText
+     , rssTextInputAttrs :: [(XML.Name,Text)]
      , rssTextInputOther :: [XML.Element]
      }
      deriving (Show)
 
 -- * Default Constructors:
 
-nullRSS :: String -- ^channel title
-        -> URLString -- ^channel link
+nullRSS :: Text -- ^channel title
+        -> URLText -- ^channel link
         -> RSS
 nullRSS title link = 
   RSS 
@@ -158,8 +160,8 @@ nullRSS title link =
     , rssOther   = []
     }
 
-nullChannel :: String -- ^rssTitle
-            -> URLString -- ^rssLink
+nullChannel :: Text -- ^rssTitle
+            -> URLText -- ^rssLink
             -> RSSChannel
 nullChannel title link = 
   RSSChannel
@@ -186,7 +188,7 @@ nullChannel title link =
      , rssChannelOther = []
      }
 
-nullItem :: String -- ^title
+nullItem :: Text -- ^title
          -> RSSItem
 nullItem title = 
    RSSItem
@@ -204,8 +206,8 @@ nullItem title =
      , rssItemOther        = []
      }
 
-nullSource :: URLString -- ^source URL
-           -> String    -- ^title
+nullSource :: URLText -- ^source URL
+           -> Text    -- ^title
            -> RSSSource
 nullSource url title = 
   RSSSource
@@ -214,9 +216,9 @@ nullSource url title =
      , rssSourceTitle  = title
      }
 
-nullEnclosure :: URLString -- ^enclosure URL
+nullEnclosure :: URLText -- ^enclosure URL
               -> Integer   -- ^enclosure length
-              -> String    -- ^enclosure type
+              -> Text    -- ^enclosure type
               -> RSSEnclosure
 nullEnclosure url len ty = 
   RSSEnclosure
@@ -226,7 +228,7 @@ nullEnclosure url len ty =
      , rssEnclosureAttrs   = []
      }
 
-newCategory :: String  -- ^category Value
+newCategory :: Text  -- ^category Value
             -> RSSCategory
 newCategory nm = 
   RSSCategory
@@ -235,7 +237,7 @@ newCategory nm =
      , rssCategoryValue    = nm
      }
 
-nullGuid :: String -- ^guid value
+nullGuid :: Text -- ^guid value
          -> RSSGuid
 nullGuid v = 
   RSSGuid
@@ -244,13 +246,13 @@ nullGuid v =
      , rssGuidValue        = v
      }
 
-nullPermaGuid :: String -- ^guid value
+nullPermaGuid :: Text -- ^guid value
               -> RSSGuid
 nullPermaGuid v = (nullGuid v){rssGuidPermanentURL=Just True}
 
-nullImage :: URLString -- ^imageURL
-          -> String    -- ^imageTitle
-          -> URLString -- ^imageLink
+nullImage :: URLText -- ^imageURL
+          -> Text    -- ^imageTitle
+          -> URLText -- ^imageLink
           -> RSSImage
 nullImage url title link = 
   RSSImage
@@ -274,9 +276,9 @@ nullCloud =
      , rssCloudAttrs    = []
      }
 
-nullTextInput :: String    -- ^inputTitle
-              -> String    -- ^inputName
-              -> URLString -- ^inputLink
+nullTextInput :: Text    -- ^inputTitle
+              -> Text    -- ^inputName
+              -> URLText -- ^inputLink
               -> RSSTextInput
 nullTextInput title nm link = 
   RSSTextInput

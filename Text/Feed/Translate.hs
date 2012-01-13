@@ -26,6 +26,7 @@ import qualified Text.RSS1.Syntax as RSS1
 import Text.Atom.Feed as Atom
 
 import Data.Maybe ( fromMaybe )
+import Data.Text (Text)
 
 -- functions for performing format-specific transformations.
 -- If the item isn't in the of-interest format, no transformation
@@ -58,10 +59,10 @@ translateItemTo fk it =
     RSSKind v -> toRSSItem v it
     RDFKind v -> toRDFItem v it
 
-toRSSItem :: Maybe String -> Item -> Item
+toRSSItem :: Maybe Text -> Item -> Item
 toRSSItem = error "toRSSItem: unimplemented"
 
-toRDFItem :: Maybe String -> Item -> Item
+toRDFItem :: Maybe Text -> Item -> Item
 toRDFItem = error "toRDFItem: unimplemented"
 
 toAtomItem :: Item -> Item

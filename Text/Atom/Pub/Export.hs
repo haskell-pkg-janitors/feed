@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 --------------------------------------------------------------------
 -- |
 -- Module    : Text.Atom.Pub.Export
@@ -11,40 +12,44 @@
 --------------------------------------------------------------------
 module Text.Atom.Pub.Export where
 
-import Text.XML.Light
+import Text.XML
+import Text.Feed.Util
 import Text.Atom.Pub
 import Text.Atom.Feed.Export 
        ( mb, xmlCategory, xmlTitle
        , xmlns_atom
        )
 
-import Data.Maybe
+import Data.Text (Text)
 
-showServiceDoc :: Service -> String
+showServiceDoc :: Service -> Text
 showServiceDoc s = showElement (xmlService s)
 
 -- ToDo: old crud; inline away.
-mkQName :: Maybe String -> String -> QName
-mkQName a b = blank_name{qPrefix=a,qName=b}
+mkName :: Maybe Text -> Text -> Name
+mkName a b = def{namePrefix=a,nameLocalName=b}
 
-mkElem :: QName -> [Attr] -> [Element] -> Element
-mkElem a b c = node a ((b::[Attr]),(c::[Element]))
+mkElem :: Name -> [Attr] -> [Element] -> Element
+mkElem a b c = Element {elementName=a 
+                       ,elementAttributes=b
+                       ,elementNodes=map NodeElement c
+                       }
 
-mkLeaf :: QName -> [Attr] -> String -> Element
-mkLeaf a b c = node (a::QName) ((b::[Attr]),[Text blank_cdata{cdData=c}])
+mkLeaf :: Name -> [Attr] -> Text -> Element
+mkLeaf a b c = Element {elementName=a, elementAttributes=b, elementNodes=[NodeContent c]}
 
-mkAttr :: String -> String -> Attr
-mkAttr a b  = Attr blank_name{qName=a} b
+mkAttr :: Text -> Text -> Attr
+mkAttr a b  = (mkName Nothing a,b)
 
 xmlns_app :: Attr
-xmlns_app = Attr (mkQName (Just "xmlns") "app") appNS
+xmlns_app = ((mkName (Just "xmlns") "app"), appNS)
 
 
-appNS :: String
+appNS :: Text
 appNS = "http://purl.org/atom/app#"
 
-appName :: String -> QName
-appName nc = (mkQName (Just "app") nc){qURI=Just appNS}
+appName :: Text -> Name
+appName nc = (mkName (Just "app") nc){nameNamespace=Just appNS}
 
 xmlService :: Service -> Element
 xmlService s = 

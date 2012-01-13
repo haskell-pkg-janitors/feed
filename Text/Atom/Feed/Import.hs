@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 --------------------------------------------------------------------
 -- |
 -- Module    : Text.Atom.Feed.Import
@@ -12,56 +13,58 @@
 
 module Text.Atom.Feed.Import where
 
+import Control.Monad (guard,mplus)
 import Data.Maybe (listToMaybe, mapMaybe, isJust)
 import Data.List  (find)
-import Control.Monad (guard,mplus)
+import Data.Text (Text,unpack)
 
+import Text.Feed.Util
 import Text.Atom.Feed
 import Text.Atom.Feed.Export (atomName, atomThreadName)
-import Text.XML.Light as XML
+import Text.XML as XML
 
-pNodes       :: String -> [XML.Element] -> [XML.Element]
-pNodes x es   = filter ((atomName x ==) . elName) es
+pNodes       :: Text -> [XML.Element] -> [XML.Element]
+pNodes x es   = filter ((atomName x ==) . elementName) es
 
-pQNodes      :: QName -> [XML.Element] -> [XML.Element]
-pQNodes x es  = filter ((x==) . elName) es
+pQNodes      :: Name -> [XML.Element] -> [XML.Element]
+pQNodes x es  = filter ((x==) . elementName) es
 
-pNode        :: String -> [XML.Element] -> Maybe XML.Element
+pNode        :: Text -> [XML.Element] -> Maybe XML.Element
 pNode x es    = listToMaybe (pNodes x es)
 
-pQNode       :: QName -> [XML.Element] -> Maybe XML.Element
+pQNode       :: Name -> [XML.Element] -> Maybe XML.Element
 pQNode x es   = listToMaybe (pQNodes x es)
 
-pLeaf        :: String -> [XML.Element] -> Maybe String
+pLeaf        :: Text -> [XML.Element] -> Maybe Text
 pLeaf x es    = strContent `fmap` pNode x es
 
-pQLeaf        :: QName -> [XML.Element] -> Maybe String
+pQLeaf        :: Name -> [XML.Element] -> Maybe Text
 pQLeaf x es    = strContent `fmap` pQNode x es
 
-pAttr        :: String -> XML.Element -> Maybe String
-pAttr x e     = fmap snd $ find sameAttr [ (k,v) | Attr k v <- elAttribs e ]
+pAttr        :: Text -> XML.Element -> Maybe Text
+pAttr x e     = fmap snd $ find sameAttr [ (k,v) | (k, v) <- elementAttributes e ]
   where
     ax = atomName x
-    sameAttr (k,_) = k == ax ||  (not (isJust (qURI k)) && qName k == x)
+    sameAttr (k,_) = k == ax ||  (not (isJust (nameNamespace k)) && nameLocalName k == x)
 
-pAttrs       :: String -> XML.Element -> [String]
-pAttrs x e    = [ v | Attr k v <- elAttribs e, k == atomName x ]
+pAttrs       :: Text -> XML.Element -> [Text]
+pAttrs x e    = [ v | (k, v) <- elementAttributes e, k == atomName x ]
 
-pQAttr       :: QName -> XML.Element -> Maybe String
-pQAttr x e    = lookup x [ (k,v) | Attr k v <- elAttribs e ]
+pQAttr       :: Name -> XML.Element -> Maybe Text
+pQAttr x e    = lookup x [ (k,v) | (k, v) <- elementAttributes e ]
 
-pMany        :: String -> (XML.Element -> Maybe a) -> [XML.Element] -> [a]
+pMany        :: Text -> (XML.Element -> Maybe a) -> [XML.Element] -> [a]
 pMany p f es  = mapMaybe f (pNodes p es)
 
 children     :: XML.Element -> [XML.Element]
-children e    = onlyElems (elContent e)
+children e    = onlyElems (elementNodes e)
 
 elementFeed  :: XML.Element -> Maybe Feed
 elementFeed e =
-  do guard (elName e == atomName "feed")
+  do guard (elementName e == atomName "feed")
      let es = children e
      i <- pLeaf "id" es
-     t <- pTextContent "title" es `mplus` return (TextString "<no-title>")
+     t <- pTextContent "title" es `mplus` return (TextText "<no-title>")
      u <- pLeaf "updated" es
      return Feed
        { feedId           = i
@@ -78,13 +81,13 @@ elementFeed e =
        , feedLinks        = pMany "link" pLink es
        , feedEntries      = pMany "entry" pEntry es
        , feedOther        = other_es es
-       , feedAttrs        = other_as (elAttribs e)
+       , feedAttrs        = other_as (elementAttributes e)
        }
   where
-   other_es es = filter (\ el -> not (elName el `elem` known_elts))
+   other_es es = filter (\ el -> not (elementName el `elem` known_elts))
    	                es
 
-   other_as as = filter (\ a -> not (attrKey a `elem` known_attrs))
+   other_as as = filter (\ (k,_) -> not (k `elem` known_attrs))
    	                as
 
     -- let's have them all (including xml:base and xml:lang + xmlns: stuff)
@@ -105,15 +108,15 @@ elementFeed e =
      , "entry"
      ]
 
-pTextContent :: String -> [XML.Element] -> Maybe TextContent
+pTextContent :: Text -> [XML.Element] -> Maybe TextContent
 pTextContent tag es =
   do e <- pNode tag es
      case pAttr "type" e of
-       Nothing       -> return (TextString (strContent e))
-       Just "text"   -> return (TextString (strContent e))
-       Just "html"   -> return (HTMLString (strContent e))
+       Nothing       -> return (TextText (strContent e))
+       Just "text"   -> return (TextText (strContent e))
+       Just "html"   -> return (HTMLText (strContent e))
        Just "xhtml"  -> case children e of   -- hmm...
-                          [c] -> return (XHTMLString c)
+                          [c] -> return (XHTMLText c)
                           _   -> Nothing -- Multiple XHTML children.
        _             -> Nothing          -- Unknown text content type.
 
@@ -173,11 +176,11 @@ pLink e =
        , linkHrefLang = pAttr "hreflang" e
        , linkTitle    = pAttr "title" e
        , linkLength   = pAttr "length" e
-       , linkAttrs    = other_as (elAttribs e)
+       , linkAttrs    = other_as (elementAttributes e)
        , linkOther    = []
        }
  where
-   other_as as = filter (\ a -> not (attrKey a `elem` known_attrs))
+   other_as as = filter (\ (k,_) -> not (k `elem` known_attrs))
    	                as
 
    known_attrs = map atomName
@@ -205,11 +208,11 @@ pEntry e =
        , entrySummary      = pTextContent "summary" es
        , entryInReplyTo    = pInReplyTo es
        , entryInReplyTotal = pInReplyTotal es
-       , entryAttrs        = other_as (elAttribs e)
+       , entryAttrs        = other_as (elementAttributes e)
        , entryOther        = [] -- ?
        }
  where
-   other_as as = filter (\ a -> not (attrKey a `elem` known_attrs))
+   other_as as = filter (\ (k,_) -> not (k `elem` known_attrs))
    	                as
 
     -- let's have them all (including xml:base and xml:lang + xmlns: stuff)
@@ -228,18 +231,18 @@ pContent e =
         _   -> Nothing
     Just ty      ->
       case pAttr "src" e of
-        Nothing  -> return (MixedContent (Just ty) (elContent e))
+        Nothing  -> return (MixedContent (Just ty) (elementNodes e))
         Just uri -> return (ExternalContent (Just ty) uri)
 
 pInReplyTotal :: [XML.Element] -> Maybe InReplyTotal
 pInReplyTotal es = do
  t <- pQLeaf (atomThreadName "total") es
- case reads t of
+ case reads $ unpack t of
    ((x,_):_) -> do
      n <- pQNode (atomThreadName "total") es
      return InReplyTotal
        { replyToTotal      = x
-       , replyToTotalOther = elAttribs n
+       , replyToTotalOther = elementAttributes n
        }
    _ -> fail "no parse"
 
@@ -253,7 +256,7 @@ pInReplyTo es = do
        , replyToHRef    = pQAttr (atomThreadName "href") t
        , replyToType    = pQAttr (atomThreadName "type") t
        , replyToSource  = pQAttr (atomThreadName "source") t
-       , replyToOther   = elAttribs t -- ToDo: snip out matched ones.
-       , replyToContent = elContent t
+       , replyToOther   = elementAttributes t -- ToDo: snip out matched ones.
+       , replyToContent = elementNodes t
        }
    _ -> fail "no parse"

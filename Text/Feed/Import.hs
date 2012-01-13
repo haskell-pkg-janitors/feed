@@ -25,10 +25,10 @@ import Text.RSS.Import       as RSS
 import Text.RSS1.Import      as RSS1
 
 import Text.Feed.Types
-import Text.XML.Light as XML
+import Text.XML as XML
 
 import Control.Monad
-
+import Data.Text.Lazy (pack)
 import System.IO.UTF8 as UTF8 ( readFile ) 
 
 -- | 'parseFeedFromFile fp' reads in the contents of the file at @fp@;
@@ -46,9 +46,9 @@ parseFeedFromFile fp = do
 -- as an indication of error.
 parseFeedString :: String -> Maybe Feed
 parseFeedString str =
-  case parseXMLDoc str of
-    Nothing -> Nothing
-    Just e  ->
+  case parseText def (pack str) of
+    Left _ -> Nothing
+    Right Document{documentRoot=e}  ->
       readAtom e `mplus`
       readRSS2 e `mplus`
       readRSS1 e `mplus`
